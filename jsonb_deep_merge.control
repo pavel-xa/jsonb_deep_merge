@@ -1,0 +1,4 @@
+#jsonb_deep_merge extension
+comment = 'jsonb deep merge'
+default_version = '0.0.1'
+

@@ -1,0 +1,2 @@
+- sudo apt-get install postgresql-server-dev-all
+- sudo apt-get install postgresql-common
