@@ -82,8 +82,6 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 		}
 		if (r1 == WJB_END_OBJECT)
 		{
-			//pushJsonbValue(&state, r2, &v2);
-			//r2 = JsonbIteratorNext(&it2, &v2, true);
 			k = v2;
 			r2 = JsonbIteratorNext(&it2, &v2, false);
 			if (nestedLevel > 0 && !group_start)
@@ -103,8 +101,6 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 		}
 		if (r2 == WJB_END_OBJECT)
 		{
-			//pushJsonbValue(&state, r1, &v1);
-			//r1 = JsonbIteratorNext(&it1, &v1, true);
 			k = v1;
 			r1 = JsonbIteratorNext(&it1, &v1, false);
 			if (nestedLevel > 0 && !group_start)
@@ -135,31 +131,7 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 				if ((&v1)->type == jbvObject)
 				{
 					if ((int)(&v1)->val.object.nPairs > 0)
-					{
 						(void)pushJsonbValueGr(&state, &k, &it1);
-						/*g = k;
-						bool group_start = false;
-						r1 = JsonbIteratorNext(&it1, &v1, false);
-						while (r1 != WJB_END_OBJECT)
-						{
-							k = v1;
-							r1 = JsonbIteratorNext(&it1, &v1, false);
-							if (JsonbValueNotNull(&v1))
-							{
-								if (!group_start)
-								{
-									pushJsonbValue(&state, WJB_KEY, &g);
-									pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
-									group_start = true;
-								}
-								pushJsonbValue(&state, WJB_KEY, &k);
-								pushJsonbValue(&state, r1, &v1);
-							}
-							r1 = JsonbIteratorNext(&it1, &v1, false);
-						}
-						if (group_start)
-							pushJsonbValue(&state, WJB_END_OBJECT, NULL);*/
-					}
 				}
 				else
 				{
@@ -180,34 +152,7 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 				if ((&v2)->type == jbvObject)
 				{
 					if ((int)(&v2)->val.object.nPairs > 0)
-					{
 						(void)pushJsonbValueGr(&state, &k, &it2);
-						/*g = k;
-						bool group_start = false;
-						//pushJsonbValue(&state, WJB_KEY, &k);
-						//pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
-						r2 = JsonbIteratorNext(&it2, &v2, false);
-						while (r2 != WJB_END_OBJECT)
-						{
-							k = v2;
-							r2 = JsonbIteratorNext(&it2, &v2, false);
-							if (JsonbValueNotNull(&v2))
-							{
-								if (!group_start)
-								{
-									pushJsonbValue(&state, WJB_KEY, &g);
-									pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
-									group_start = true;
-								}
-								//(void)pushJsonbValue1(&state, NULL, &k, r2, &v2);
-								pushJsonbValue(&state, WJB_KEY, &k);
-								pushJsonbValue(&state, r2, &v2);
-							}
-							r2 = JsonbIteratorNext(&it2, &v2, false);
-						}
-						if (group_start)
-							pushJsonbValue(&state, WJB_END_OBJECT, NULL);*/
-					}
 				}
 				else
 				{
@@ -222,17 +167,6 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 		r1 = JsonbIteratorNext(&it1, &v1, false);
 		if ((&v1)->type != jbvObject && (&v2)->type != jbvObject)
 		{
-			/* TODO jbvString, jbvNull and jbvBool */
-			//newValue.type = jbvNumeric;
-
-			/*newValue.val.numeric = DatumGetNumeric((DirectFunctionCall2(numeric_add, PointerGetDatum(
-				(&v1)->val.numeric), PointerGetDatum((&v2)->val.numeric))));*/
-
-			/*if ((&v2)->type != jbvNull)
-			{
-				pushJsonbValue(&state, WJB_KEY, &k);
-				pushJsonbValue(&state, WJB_VALUE, &v2);
-			}*/
 			if (nestedLevel > 0 && !group_start)
 				group_start = pushJsonbValue1(&state, &g, &k, r1, &v2);
 			else
@@ -244,8 +178,6 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 		{
 			g = k;
 			group_start = false;
-			//pushJsonbValue(&state, WJB_KEY, &k);
-			//pushJsonbValue(&state, WJB_BEGIN_OBJECT, NULL);
 			nestedLevel++;
 		}
 		else
@@ -322,29 +254,6 @@ static bool
 pushJsonbValue1(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key,
 	JsonbIteratorToken seq, JsonbValue* scalarVal)
 {
-
-	/*if ((scalarVal)->type != jbvNull)
-	{
-		if ((scalarVal)->type == jbvBool)
-		{
-			//buf = pnstrdup(key->val.string.val, key->val.string.len);
-			//elog(NOTICE, "jbvNull: k = %s", buf);  //debug
-			//buf = pnstrdup(scalarVal->val.string.val, scalarVal->val.string.len);
-			//elog(NOTICE, "jbvNull: val = %s", buf);  //debug
-			//btmp = DatumGetBool(scalarVal->val.boolean);
-			if (DatumGetBool(scalarVal->val.boolean))
-			{
-				pushJsonbValue(pstate, WJB_KEY, key);
-				pushJsonbValue(pstate, seq, scalarVal);
-			}
-		}
-		else
-		{
-			pushJsonbValue(pstate, WJB_KEY, key);
-			pushJsonbValue(pstate, seq, scalarVal);
-		}
-	}
-	return 1;*/
 	if (JsonbValueNotNull(scalarVal))
 	{
 		if (gkey != NULL)
@@ -361,13 +270,12 @@ pushJsonbValue1(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key,
 
 static bool
 pushJsonbValueGr(JsonbParseState** pstate, JsonbValue* gkey,
-				JsonbIterator** it) // , JsonbValue* val
+				JsonbIterator** it)
 {
 	JsonbIteratorToken r;
 	JsonbValue v, 
 			   k;
 	bool group_start = false;
-	//JsonbValue g = *key;
 
 	r = JsonbIteratorNext(it, &v, false);
 	while (r != WJB_END_OBJECT)
