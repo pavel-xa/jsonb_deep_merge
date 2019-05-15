@@ -1,30 +1,19 @@
-## Jsonb deep merge
+# jsonb_deep_merge
 
-jsonb_deep_merge is a PostgreSQL extension to easily merge jsonb with removing empty keys, null keys, boolean keys with false value
+jsonb_deep_merge is a PostgreSQL extension to easily merge jsonb with removing empty keys, null keys, boolean keys with "false" value.
+Boolean keys with a false value are deleted only from the right jsonb. If you do not need to delete them, you must pass "false" as the 3rd parameter of the function.
 
-    SELECT jsonb_deep_merge('{"a": 1}', '{"a": 2}');
-    > '{"a": 2}'
+Provided functions:
 
-	SELECT jsonb_deep_merge('{"a": 1}', '{"a": null}');
-    > '{}'
+* `jsonb_deep_merge(a jsonb, b jsonb, c bool)`  
+`a` - jsonb object  
+`b` - jsonb object
+`c` - when "true" (default) removing boolean keys with "false" value from the right jsonb
 
-	SELECT jsonb_deep_merge('{"a": 1}', '{"a": false}');
-    > '{}'
-    
-    SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": "3"}}')
-    > '{"a": {"b": "3"}}'
-
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null}}')
-    > '{}'
-
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null, "c": "3"}}')
-    > '{"a": {"c": "3"}}'
-
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}')
-    > '{}'
-    
 It also provides an aggregation function `jsonb_deep_agg`
+
     
+
 ## INSTALLATION
 
 Clone source:
@@ -46,15 +35,52 @@ Once you have successfully compiled the extension log into postgresql and do:
     
 
 
-## EXAMPLE
+## EXAMPLES
+	SELECT jsonb_deep_merge('{"a": 1}', '{"a": 2}');
+    > '{"a": 2}'
 
-    CREATE TABLE simple_nested (data jsonb);
-    INSERT INTO simple_nested VALUES ('{"a": 1}'), ('{"a": 2, "b": 3, "c": 7, "d": 9}'), ('{"a": 5, "c": null}'), ('{"a": 3, "b": 1, "d": false}'), (NULL);
+	SELECT jsonb_deep_merge('{"a": 1}', '{"a": null}');
+    > '{}'
+
+	SELECT jsonb_deep_merge('{"a": 1}', '{"a": false}');
+    > '{}'
+
+	SELECT jsonb_deep_merge('{"a": 1}', '{"a": false}', false);
+	> '{"a": false}'
+    
+    SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": "3"}}')
+    > '{"a": {"b": "3"}}'
+
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null}}')
+    > '{}'
+
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null, "c": "3"}}')
+    > '{"a": {"c": "3"}}'
+
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}')
+    > '{}'
+
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}', false)
+	> '{"a": {"b": false}}'
+
+	CREATE TABLE simple_nested (data jsonb);
+    INSERT INTO simple_nested VALUES ('{"a": 1}'), 
+										('{"a": 2, "b": 3, "c": 7, "d": 9}'), 
+										('{"a": 5, "c": null}'), 
+										('{"a": 3, "b": 1, "d": false}'), 
+										(NULL);
     SELECT jsonb_deep_agg(data) FROM simple_nested;
     > {"a": 3, "b": 1}
 
 
+
 ## TESTING
+
+To run the tests use:
+
+    make install && make installcheck
+
+All the tests are in the sql directory.
 
 ## BENCHMARKING
 
