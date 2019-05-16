@@ -7,7 +7,7 @@ Provided functions:
 
 * `jsonb_deep_merge(a jsonb, b jsonb, c bool)`  
 `a` - jsonb object  
-`b` - jsonb object
+`b` - jsonb object  
 `c` - when "true" (default) removing boolean keys with "false" value from the right jsonb
 
 It also provides an aggregation function `jsonb_deep_agg`
@@ -48,27 +48,27 @@ Once you have successfully compiled the extension log into postgresql and do:
 	SELECT jsonb_deep_merge('{"a": 1}', '{"a": false}', false);
 	> '{"a": false}'
     
-    SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": "3"}}')
+    SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": "3"}}');
     > '{"a": {"b": "3"}}'
 
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null}}')
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null}}');
     > '{}'
 
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null, "c": "3"}}')
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null, "c": "3"}}');
     > '{"a": {"c": "3"}}'
 
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}')
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}');
     > '{}'
 
-	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}', false)
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}', false);
 	> '{"a": {"b": false}}'
 
 	CREATE TABLE simple_nested (data jsonb);
     INSERT INTO simple_nested VALUES ('{"a": 1}'), 
-										('{"a": 2, "b": 3, "c": 7, "d": 9}'), 
-										('{"a": 5, "c": null}'), 
-										('{"a": 3, "b": 1, "d": false}'), 
-										(NULL);
+					('{"a": 2, "b": 3, "c": 7, "d": 9}'), 
+					('{"a": 5, "c": null}'), 
+					('{"a": 3, "b": 1, "d": false}'), 
+					(NULL);
     SELECT jsonb_deep_agg(data) FROM simple_nested;
     > {"a": 3, "b": 1}
 
