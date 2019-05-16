@@ -19,7 +19,7 @@ It also provides an aggregation function `jsonb_deep_agg`
 Clone source:
 
 	git clone https://github.com/pavel-xa/jsonb_deep_merge.git
-	cd jsonb-extend
+	cd jsonb_deep_merge
     
 In the directory where you downloaded jsonb_deep_merge, run
 
