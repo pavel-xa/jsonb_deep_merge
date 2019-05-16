@@ -65,6 +65,18 @@ select jsonb_deep_merge('{"a": 23}'::jsonb, '{"a": {"b": 1, "c": 2}}'::jsonb);
  {"a": {"b": 1, "c": 2}}
 (1 row)
 
+select jsonb_deep_merge('{"a": {"c": 23}}'::jsonb, '{"a": {"b": 1, "c": {"d": 2}}}'::jsonb);
+        jsonb_deep_merge        
+--------------------------------
+ {"a": {"b": 1, "c": {"d": 2}}}
+(1 row)
+
+select jsonb_deep_merge('{"a": {"b": 1, "c": {"d": 2}}}'::jsonb, '{"a": {"c": 23}}'::jsonb);
+     jsonb_deep_merge     
+--------------------------
+ {"a": {"b": 1, "c": 23}}
+(1 row)
+
 select jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}');
  jsonb_deep_merge 
 ------------------
@@ -117,6 +129,102 @@ select jsonb_deep_merge('{"a" : {"b" : null, "d" : false}}'::jsonb, '{"a" : {"b"
                jsonb_deep_merge               
 ----------------------------------------------
  {"a": {"b": 2, "d": false, "f": 2}, "c": 11}
+(1 row)
+
+select jsonb_deep_merge('{"b" : 2, "k" : {"k1" : 1, "k2" : 2}}'::jsonb, '{"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}'::jsonb);
+ jsonb_deep_merge 
+------------------
+ {}
+(1 row)
+
+select jsonb_deep_merge('{"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}'::jsonb, '{"b" : 2, "k" : {"k1" : 1, "k2" : 2}}'::jsonb);
+               jsonb_deep_merge                
+-----------------------------------------------
+ {"b": 2, "d": false, "k": {"k1": 1, "k2": 2}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, '{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb);
+ jsonb_deep_merge 
+------------------
+ {"a": {"k": {}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb);
+                   jsonb_deep_merge                   
+------------------------------------------------------
+ {"a": {"b": 2, "d": false, "k": {"k1": 1, "k2": 2}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, '{"a" : {"b" : null, "d" : 2, "k" : {"k1" : null, "k2" : false}}}'::jsonb);
+     jsonb_deep_merge     
+--------------------------
+ {"a": {"d": 2, "k": {}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : 2, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb);
+                 jsonb_deep_merge                 
+--------------------------------------------------
+ {"a": {"b": 2, "d": 2, "k": {"k1": 1, "k2": 2}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, '{"z" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb);
+                     jsonb_deep_merge                     
+----------------------------------------------------------
+ {"a": {"b": 2, "k": {"k1": 1, "k2": 2}}, "z": {"k": {}}}
+(1 row)
+
+select jsonb_deep_merge('{"z" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb);
+                                jsonb_deep_merge                                 
+---------------------------------------------------------------------------------
+ {"a": {"b": 2, "k": {"k1": 1, "k2": 2}}, "z": {"d": false, "k": {"k2": false}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "k3" : 2}}, "c" : 11, "z" : false}'::jsonb, '{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb);
+               jsonb_deep_merge               
+----------------------------------------------
+ {"a": {"k": {"k3": 2}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "k3" : 2}}, "c" : 11, "z" : false}'::jsonb);
+                            jsonb_deep_merge                            
+------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "k": {"k1": 1, "k2": 2, "k3": 2}}, "c": 11}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb, '{"a" : {"b" : null, "d" : false, "n" : {"m" : {}}, "p" : {"k1" : false, "k2" : null}}}'::jsonb);
+                            jsonb_deep_merge                            
+------------------------------------------------------------------------
+ {"a": {"f": 2, "k": {"k1": 1, "k2": 2}, "n": {}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "n" : {"m" : {}}, "p" : {"k1" : false, "k2" : null}}}'::jsonb, '{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb);
+                                          jsonb_deep_merge                                          
+----------------------------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "f": 2, "k": {"k1": 1, "k2": 2}, "n": {}}, "c": 11, "p": {"k1": false}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb, '{"a" : {"b" : null, "d" : false, "p" : {"k1" : 5, "k2" : null, "k3": {"kz1" : 1, "kz2" : null}}}}'::jsonb);
+                                        jsonb_deep_merge                                         
+-------------------------------------------------------------------------------------------------
+ {"a": {"f": 2, "k": {"k1": 1, "k2": 2}, "p": {"k1": 5, "k3": {"kz1": 1}}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "p" : {"k1" : 5, "k2" : null, "k3": {"kz1" : 1, "kz2" : null}}}}'::jsonb, '{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb);
+                                            jsonb_deep_merge                                             
+---------------------------------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "f": 2, "k": {"k1": 1, "k2": 2}, "p": {"k1": 5, "k3": {"kz1": 1}}}, "c": 11}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "l" : {"l1" : 1, "l2" : 2}}}}'::jsonb, '{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false, "l" : {"l1" : null, "l2" : false}}}}'::jsonb);
+    jsonb_deep_merge     
+-------------------------
+ {"a": {"k": {"l": {}}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false, "l" : {"l1" : null, "l2" : false}}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "l" : {"l1" : 1, "l2" : 2}}}}'::jsonb);
+                               jsonb_deep_merge                                
+-------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "k": {"l": {"l1": 1, "l2": 2}, "k1": 1, "k2": 2}}}
 (1 row)
 
 select jsonb_deep_merge('{}'::jsonb, '{}'::jsonb, false);
@@ -185,6 +293,18 @@ select jsonb_deep_merge('{"a": 23}'::jsonb, '{"a": {"b": 1, "c": 2}}'::jsonb, fa
  {"a": {"b": 1, "c": 2}}
 (1 row)
 
+select jsonb_deep_merge('{"a": {"c": 23}}'::jsonb, '{"a": {"b": 1, "c": {"d": 2}}}'::jsonb, false);
+        jsonb_deep_merge        
+--------------------------------
+ {"a": {"b": 1, "c": {"d": 2}}}
+(1 row)
+
+select jsonb_deep_merge('{"a": {"b": 1, "c": {"d": 2}}}'::jsonb, '{"a": {"c": 23}}'::jsonb, false);
+     jsonb_deep_merge     
+--------------------------
+ {"a": {"b": 1, "c": 23}}
+(1 row)
+
 select jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": false}}', false);
   jsonb_deep_merge   
 ---------------------
@@ -237,5 +357,101 @@ select jsonb_deep_merge('{"a" : {"b" : null, "d" : false}}'::jsonb, '{"a" : {"b"
                      jsonb_deep_merge                     
 ----------------------------------------------------------
  {"a": {"b": 2, "d": false, "f": 2}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"b" : 2, "k" : {"k1" : 1, "k2" : 2}}'::jsonb, '{"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}'::jsonb, false);
+         jsonb_deep_merge         
+----------------------------------
+ {"d": false, "k": {"k2": false}}
+(1 row)
+
+select jsonb_deep_merge('{"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}'::jsonb, '{"b" : 2, "k" : {"k1" : 1, "k2" : 2}}'::jsonb, false);
+               jsonb_deep_merge                
+-----------------------------------------------
+ {"b": 2, "d": false, "k": {"k1": 1, "k2": 2}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, '{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, false);
+            jsonb_deep_merge             
+-----------------------------------------
+ {"a": {"d": false, "k": {"k2": false}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, false);
+                   jsonb_deep_merge                   
+------------------------------------------------------
+ {"a": {"b": 2, "d": false, "k": {"k1": 1, "k2": 2}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, '{"a" : {"b" : null, "d" : 2, "k" : {"k1" : null, "k2" : false}}}'::jsonb, false);
+          jsonb_deep_merge           
+-------------------------------------
+ {"a": {"d": 2, "k": {"k2": false}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : 2, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, false);
+                 jsonb_deep_merge                 
+--------------------------------------------------
+ {"a": {"b": 2, "d": 2, "k": {"k1": 1, "k2": 2}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, '{"z" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, false);
+                                jsonb_deep_merge                                 
+---------------------------------------------------------------------------------
+ {"a": {"b": 2, "k": {"k1": 1, "k2": 2}}, "z": {"d": false, "k": {"k2": false}}}
+(1 row)
+
+select jsonb_deep_merge('{"z" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2}}}'::jsonb, false);
+                                jsonb_deep_merge                                 
+---------------------------------------------------------------------------------
+ {"a": {"b": 2, "k": {"k1": 1, "k2": 2}}, "z": {"d": false, "k": {"k2": false}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "k3" : 2}}, "c" : 11, "z" : false}'::jsonb, '{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, false);
+                           jsonb_deep_merge                            
+-----------------------------------------------------------------------
+ {"a": {"d": false, "k": {"k2": false, "k3": 2}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "k3" : 2}}, "c" : 11, "z" : false}'::jsonb, false);
+                                  jsonb_deep_merge                                  
+------------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "k": {"k1": 1, "k2": 2, "k3": 2}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb, '{"a" : {"b" : null, "d" : false, "n" : {"m" : {}}, "p" : {"k1" : false, "k2" : null}}}'::jsonb, false);
+                                            jsonb_deep_merge                                            
+--------------------------------------------------------------------------------------------------------
+ {"a": {"d": false, "f": 2, "k": {"k1": 1, "k2": 2}, "n": {}}, "c": 11, "p": {"k1": false}, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "n" : {"m" : {}}, "p" : {"k1" : false, "k2" : null}}}'::jsonb, '{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb, false);
+                                                jsonb_deep_merge                                                
+----------------------------------------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "f": 2, "k": {"k1": 1, "k2": 2}, "n": {}}, "c": 11, "p": {"k1": false}, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb, '{"a" : {"b" : null, "d" : false, "p" : {"k1" : 5, "k2" : null, "k3": {"kz1" : 1, "kz2" : null}}}}'::jsonb, false);
+                                              jsonb_deep_merge                                               
+-------------------------------------------------------------------------------------------------------------
+ {"a": {"d": false, "f": 2, "k": {"k1": 1, "k2": 2}, "p": {"k1": 5, "k3": {"kz1": 1}}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "p" : {"k1" : 5, "k2" : null, "k3": {"kz1" : 1, "kz2" : null}}}}'::jsonb, '{"a" : {"b" : 2, "f" : 2, "k" : {"k1" : 1, "k2" : 2}}, "c" : 11, "z" : false}'::jsonb, false);
+                                                  jsonb_deep_merge                                                   
+---------------------------------------------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "f": 2, "k": {"k1": 1, "k2": 2}, "p": {"k1": 5, "k3": {"kz1": 1}}}, "c": 11, "z": false}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "l" : {"l1" : 1, "l2" : 2}}}}'::jsonb, '{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false, "l" : {"l1" : null, "l2" : false}}}}'::jsonb, false);
+                      jsonb_deep_merge                       
+-------------------------------------------------------------
+ {"a": {"d": false, "k": {"l": {"l2": false}, "k2": false}}}
+(1 row)
+
+select jsonb_deep_merge('{"a" : {"b" : null, "d" : false, "k" : {"k1" : null, "k2" : false, "l" : {"l1" : null, "l2" : false}}}}'::jsonb, '{"a" : {"b" : 2, "k" : {"k1" : 1, "k2" : 2, "l" : {"l1" : 1, "l2" : 2}}}}'::jsonb, false);
+                               jsonb_deep_merge                                
+-------------------------------------------------------------------------------
+ {"a": {"b": 2, "d": false, "k": {"l": {"l1": 1, "l2": 2}, "k1": 1, "k2": 2}}}
 (1 row)
 

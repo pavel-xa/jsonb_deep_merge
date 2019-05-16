@@ -1,5 +1,5 @@
 EXTENSION = jsonb_deep_merge
-DATA = jsonb_deep_merge--0.0.1.sql
+DATA = jsonb_deep_merge--0.0.2.sql
 REGRESS	 = jsonb_deep_merge
 MODULES = jsonb_deep_merge
 

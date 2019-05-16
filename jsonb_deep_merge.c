@@ -10,10 +10,13 @@ PG_MODULE_MAGIC;
 PG_FUNCTION_INFO_V1(jsonb_deep_merge);
 
 /* internal functions */
+static JsonbIteratorToken JsonbNextToken(JsonbIterator** it, JsonbValue* val, bool skipNested);
 static int	lengthCompareJsonbStringValue(const void* a, const void* b);
 static bool JsonbValueNotNull(const JsonbValue* scalarVal, const bool strip_false);
-static bool pushJsonbKey(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key, const JsonbIteratorToken seq, JsonbValue* scalarVal, const bool strip_false);
-static bool pushJsonbValueGr(JsonbParseState** pstate, JsonbValue* gkey, JsonbIterator** it, const bool strip_false);
+static bool pushJsonbKey(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key, const JsonbIteratorToken seq, JsonbValue* scalarVal,
+		const int* lvl, const bool group_start, const bool strip_false);
+static bool pushJsonbKeyRecursive(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key, const JsonbIteratorToken seq, JsonbValue* val,
+		JsonbIterator** it, int* lvl, bool group_start, const bool strip_false);
 
 Datum
 jsonb_deep_merge(PG_FUNCTION_ARGS)
@@ -31,14 +34,14 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 		v2,
 		k,  //key
 		g;	//group_key
-	JsonbIteratorToken r1,
-		r2;
+	JsonbIteratorToken tok1,
+		tok2;
 	JsonbValue* res;
 	JsonbParseState* state = NULL;
 
 	bool	strip_false = PG_NARGS() > 2 ? PG_GETARG_BOOL(2) : true;
 	int		lvl = 0;
-	bool	group_start = false;
+	bool	group_start = true;
 
 	if (jb1 == NULL)
 #ifdef PG_RETURN_JSONB_P
@@ -58,162 +61,105 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 	it1 = JsonbIteratorInit(&jb1->root);
 	it2 = JsonbIteratorInit(&jb2->root);
 
-	r1 = JsonbIteratorNext(&it1, &v1, false);
-	r2 = JsonbIteratorNext(&it2, &v2, false);
+	tok1 = JsonbNextToken(&it1, &v1, false);
+	tok2 = JsonbNextToken(&it2, &v2, false);
 
-	if (r1 != WJB_BEGIN_OBJECT || r2 != WJB_BEGIN_OBJECT)
+	if (tok1 != WJB_BEGIN_OBJECT || tok2 != WJB_BEGIN_OBJECT)
 		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Iterator was not an object")));
 
 	/* Here we create the new jsonb */
-	pushJsonbValue(&state, r1, NULL);
+	pushJsonbValue(&state, tok1, NULL);
 
 	/* Start object */
-	r1 = JsonbIteratorNext(&it1, &v1, false);
-	r2 = JsonbIteratorNext(&it2, &v2, false);
+	tok1 = JsonbNextToken(&it1, &v1, false);
+	tok2 = JsonbNextToken(&it2, &v2, false);
 
-	while (!(r1 == WJB_END_OBJECT && r2 == WJB_END_OBJECT && lvl == 0))
+	while (!(tok1 == WJB_END_OBJECT && tok2 == WJB_END_OBJECT && lvl == 0))
 	{
 		int			difference;
 
-		if (r1 == WJB_END_OBJECT && r2 == WJB_END_OBJECT && lvl > 0)
+		if (tok1 == WJB_END_OBJECT && tok2 == WJB_END_OBJECT && lvl > 0)
 		{
 			if (group_start)
 				pushJsonbValue(&state, WJB_END_OBJECT, NULL);
-			group_start = false;
-			r1 = JsonbIteratorNext(&it1, &v1, false);
-			r2 = JsonbIteratorNext(&it2, &v2, false);
+			group_start = true;
+			tok1 = JsonbNextToken(&it1, &v1, false);
+			tok2 = JsonbNextToken(&it2, &v2, false);
 			lvl--;
 			continue;
 		}
-		if (r1 == WJB_END_OBJECT)
+		if (tok1 == WJB_END_OBJECT)
 		{
-			Assert(r2 == WJB_KEY);
+			Assert(tok2 == WJB_KEY);
 
-			k = v2;
-			r2 = JsonbIteratorNext(&it2, &v2, false);
-
-			if (lvl > 0 && !group_start)
-				group_start = pushJsonbKey(&state, &g, &k, r2, &v2, strip_false);
-			else
-			{
-				if ((&v2)->type == jbvObject)
-				{
-					if ((int)(&v2)->val.object.nPairs > 0)
-						(void)pushJsonbValueGr(&state, &k, &it2, strip_false);
-				}
-				else
-					(void)pushJsonbKey(&state, NULL, &k, r2, &v2, strip_false);
-			}
-			r2 = JsonbIteratorNext(&it2, &v2, false);
+			group_start = pushJsonbKeyRecursive(&state, &g, &v2, tok2, NULL, &it2, &lvl, group_start, strip_false);
+			tok2 = JsonbNextToken(&it2, &v2, false);
 			continue;
 		}
-		if (r2 == WJB_END_OBJECT)
+		if (tok2 == WJB_END_OBJECT)
 		{
-			Assert(r1 == WJB_KEY);
+			Assert(tok1 == WJB_KEY);
 
-			k = v1;
-			r1 = JsonbIteratorNext(&it1, &v1, false);
-
-			if (lvl > 0 && !group_start)
-				group_start = pushJsonbKey(&state, &g, &k, r1, &v1, false);
-			else
-			{
-				if ((&v1)->type == jbvObject)
-				{
-					if ((int)(&v1)->val.object.nPairs > 0)
-						(void)pushJsonbValueGr(&state, &k, &it1, false);
-				}
-				else
-					(void)pushJsonbKey(&state, NULL, &k, r1, &v1, false);
-			}
-			r1 = JsonbIteratorNext(&it1, &v1, false);
+			group_start = pushJsonbKeyRecursive(&state, &g, &v1, tok1, NULL, &it1, &lvl, group_start, false);
+			tok1 = JsonbNextToken(&it1, &v1, false);
 			continue;
 		}
 
-		Assert(r1 == WJB_KEY);
-		Assert(r2 == WJB_KEY);
+		Assert(tok1 == WJB_KEY);
+		Assert(tok2 == WJB_KEY);
 
 		difference = lengthCompareJsonbStringValue(&v1, &v2);
 		/* first key is smaller */
 		if (difference < 0)
 		{
-			k = v1;
-			r1 = JsonbIteratorNext(&it1, &v1, false);
-
-			if (lvl > 0 && !group_start)
-				group_start = pushJsonbKey(&state, &g, &k, r1, &v1, false);
-			else
-			{
-				if ((&v1)->type == jbvObject)
-				{
-					if ((int)(&v1)->val.object.nPairs > 0)
-						(void)pushJsonbValueGr(&state, &k, &it1, false);
-				}
-				else
-					(void)pushJsonbKey(&state, NULL, &k, r1, &v1, false);
-			}
-			r1 = JsonbIteratorNext(&it1, &v1, false);
+			group_start = pushJsonbKeyRecursive(&state, &g, &v1, tok1, NULL, &it1, &lvl, group_start, false);
+			tok1 = JsonbNextToken(&it1, &v1, false);
 			continue;
 		}
 		/* first key is bigger */
 		else if (difference > 0)
 		{
-			
-			k = v2;
-			r2 = JsonbIteratorNext(&it2, &v2, false);
-
-			if (lvl > 0 && !group_start)
-				group_start = pushJsonbKey(&state, &g, &k, r2, &v2, strip_false);
-			else
-			{
-				if ((&v2)->type == jbvObject)
-				{
-					if ((int)(&v2)->val.object.nPairs > 0)
-						(void)pushJsonbValueGr(&state, &k, &it2, strip_false);
-				}
-				else
-					(void)pushJsonbKey(&state, NULL, &k, r2, &v2, strip_false);
-			}
-			r2 = JsonbIteratorNext(&it2, &v2, false);
+			group_start = pushJsonbKeyRecursive(&state, &g, &v2, tok2, NULL, &it2, &lvl, group_start, strip_false);
+			tok2 = JsonbNextToken(&it2, &v2, false);
 			continue;
 		}
 
-		/* keys match */
-		k = v1;
-		r2 = JsonbIteratorNext(&it2, &v2, false);
-		r1 = JsonbIteratorNext(&it1, &v1, false);
+		/* keys equal */
+		k = v2;
+		tok1 = JsonbNextToken(&it1, &v1, false);
+		tok2 = JsonbNextToken(&it2, &v2, false);
 
-		if ((&v2)->type != jbvObject && (&v2)->type != jbvArray)
+		if ((&v1)->type != jbvObject || (&v2)->type != jbvObject)
 		{
-			if (lvl > 0 && !group_start)
-				group_start = pushJsonbKey(&state, &g, &k, r2, &v2, strip_false);
-			else
-				(void)pushJsonbKey(&state, NULL, &k, r2, &v2, strip_false);
+			group_start = pushJsonbKeyRecursive(&state, &g, &k, tok2, &v2, &it2, &lvl, group_start, strip_false);
 
 			if ((&v1)->type == jbvObject)
-				while (r1 != WJB_END_OBJECT)
+				while (tok1 != WJB_END_OBJECT)
 				{
-					r1 = JsonbIteratorNext(&it1, &v1, false);
+					tok1 = JsonbNextToken(&it1, &v1, true);
 				}
-		}
-		else if ((&v1)->type != jbvObject && (&v1)->type != jbvArray && (&v2)->type == jbvObject)
-		{
-			if ((int)(&v2)->val.object.nPairs > 0)
-				(void)pushJsonbValueGr(&state, &k, &it2, strip_false);
 		}
 		else if ((&v1)->type == jbvObject && (&v2)->type == jbvObject)
 		{
+			if (lvl == 0)
+				group_start = false;
+			else
+			{
+				/* push WJB_BEGIN_OBJECT */
+				Assert(tok2 == WJB_BEGIN_OBJECT);
+
+				(void)pushJsonbKey(&state, &g, &k, tok2, NULL, &lvl, group_start, false);
+				group_start = true;
+			}
 			g = k;
-			group_start = false;
 			lvl++;
 		}
 		else
 		{
 			ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Incompatible types")));
 		}
-		r2 = JsonbIteratorNext(&it2, &v2, false);
-		r1 = JsonbIteratorNext(&it1, &v1, false);
-
+		tok1 = JsonbNextToken(&it1, &v1, false);
+		tok2 = JsonbNextToken(&it2, &v2, false);
 	}
 
 	res = pushJsonbValue(&state, WJB_END_OBJECT, NULL);
@@ -264,65 +210,107 @@ lengthCompareJsonbStringValue(const void* a, const void* b)
 static bool
 JsonbValueNotNull(const JsonbValue* scalarVal, const bool strip_false)
 {
-	if ((scalarVal)->type != jbvNull)
+	if (scalarVal != NULL)
 	{
-		if ((scalarVal)->type == jbvBool && strip_false)
-			return DatumGetBool(scalarVal->val.boolean);
-		else
-			return true;
+		if ((scalarVal)->type != jbvNull)
+		{
+			if ((scalarVal)->type == jbvBool && strip_false)
+				return DatumGetBool(scalarVal->val.boolean);
+			else
+				return true;
+		}
 	}
 	return false;
 }
 
 static bool
 pushJsonbKey(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key,
-	const JsonbIteratorToken seq, JsonbValue* scalarVal, const bool strip_false)
+	const JsonbIteratorToken seq, JsonbValue* scalarVal,
+	const int* lvl, const bool group_start, const bool strip_false)
 {
 	Assert(key->type == jbvString);
 
-	if (JsonbValueNotNull(scalarVal, strip_false))
+	if (seq == WJB_BEGIN_OBJECT || seq == WJB_END_OBJECT || JsonbValueNotNull(scalarVal, strip_false))
 	{
-		if (gkey != NULL)
+		if (gkey != NULL && *lvl > 0 && !group_start)
 		{
 			Assert(gkey->type == jbvString);
 
 			pushJsonbValue(pstate, WJB_KEY, gkey);
 			pushJsonbValue(pstate, WJB_BEGIN_OBJECT, NULL);
 		}
+
 		pushJsonbValue(pstate, WJB_KEY, key);
-		pushJsonbValue(pstate, seq, scalarVal);
+		if (seq == WJB_BEGIN_OBJECT || seq == WJB_END_OBJECT)
+			pushJsonbValue(pstate, seq, NULL);
+		else
+			pushJsonbValue(pstate, seq, scalarVal);
 		return true;
 	}
-	return false;
+	return group_start;
 }
 
 static bool
-pushJsonbValueGr(JsonbParseState** pstate, JsonbValue* gkey,
-				JsonbIterator** it, const bool strip_false)
+pushJsonbKeyRecursive(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* key,
+	const JsonbIteratorToken seq, JsonbValue* val, JsonbIterator** it,
+	int* lvl, bool group_start, const bool strip_false)
 {
-	JsonbIteratorToken r;
-	JsonbValue v, 
+	JsonbIteratorToken tok;
+	JsonbValue v,
 			   k; //key
-	bool group_start = false;
 
-	r = JsonbIteratorNext(it, &k, true);
-		
-	while (r != WJB_END_OBJECT)
+	Assert(key->type == jbvString);
+
+	if (val != NULL)
 	{
-		Assert(r == WJB_KEY);
-
-		r = JsonbIteratorNext(it, &v, true);
-
-		if (!group_start)
-			group_start = pushJsonbKey(pstate, gkey, &k, r, &v, strip_false);
-		else
-			(void)pushJsonbKey(pstate, NULL, &k, r, &v, strip_false);
-
-		r = JsonbIteratorNext(it, &k, true);
+		tok = seq;
+		v = *val;
 	}
+	else
+		tok = JsonbNextToken(it, &v, false);
 
-	if (group_start)
-		pushJsonbValue(pstate, WJB_END_OBJECT, NULL);
+	if ((&v)->type != jbvObject)
+	{
+		group_start = pushJsonbKey(pstate, gkey, key, tok, &v, lvl, group_start, strip_false);
+	}
+	else if ((int)(&v)->val.object.nPairs > 0) /* val->type = jbvObject */
+	{
+		if (*lvl == 0)
+			group_start = false;
+		else
+		{
+			/* push WJB_BEGIN_OBJECT */
+			Assert(tok == WJB_BEGIN_OBJECT);
 
+			(void)pushJsonbKey(pstate, gkey, key, tok, NULL, lvl, group_start, false);
+			group_start = true;
+		}
+		(*lvl)++;
+
+		tok = JsonbNextToken(it, &k, false);
+
+		while (tok != WJB_END_OBJECT)
+		{
+			Assert(tok == WJB_KEY);
+
+			group_start = pushJsonbKeyRecursive(pstate, key, &k, tok, NULL, it, lvl, group_start, strip_false);
+			tok = JsonbNextToken(it, &k, false);
+		}
+
+		if (group_start)
+			pushJsonbValue(pstate, WJB_END_OBJECT, NULL);
+		(*lvl)--;
+	}
 	return group_start;
+}
+
+static JsonbIteratorToken
+JsonbNextToken(JsonbIterator** it, JsonbValue* val, bool skipNested)
+{
+	JsonbIteratorToken tok = JsonbIteratorNext(it, val, skipNested);
+	if (tok == WJB_BEGIN_ARRAY || tok == WJB_END_ARRAY || tok == WJB_ELEM)
+	{
+		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Arrays are not allowed")));
+	}
+	return tok;
 }

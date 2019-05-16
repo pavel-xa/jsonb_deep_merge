@@ -92,4 +92,13 @@ JSONB is internall represented as a tree in which all levels are sorted.
   
 ## LIMITATIONS
 
-Right now, the algorithm supports JSONB only level 1 nesting.
+Right now, the algorithm supports the removal of empty keys, from merged JSONB only at first level of nesting.
+
+Examples
+
+	SELECT jsonb_deep_merge('{"a": {"b": 1}}', '{"a": {"b": null}}');
+    > '{}'
+	But
+
+	SELECT jsonb_deep_merge('{"a" : {"k" : {"k1" : 1}}}'::jsonb, '{"a" : {"d" : false, "k" : {"k1" : null}}}'::jsonb);
+	> '{"a": {"k": {}}}'
