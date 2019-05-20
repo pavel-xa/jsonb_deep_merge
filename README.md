@@ -1,14 +1,16 @@
 # jsonb_deep_merge
 
+![Build Status](https://travis-ci.org/pavel-xa/jsonb_deep_merge.svg?branch=master)
+
 jsonb_deep_merge is a PostgreSQL extension to easily merge jsonb with removing empty keys, null keys, boolean keys with "false" value.
 Boolean keys with a false value are deleted only from the right jsonb. If you do not need to delete them, you must pass "false" as the 3rd parameter of the function.
 
 Provided functions:
 
-* `jsonb_deep_merge(a jsonb, b jsonb, c bool)`  
+* `jsonb_deep_merge(a jsonb, b jsonb, c boolean DEFAULT true)`  
 `a` - jsonb object  
 `b` - jsonb object  
-`c` - when "true" (default) removing boolean keys with "false" value from the right jsonb
+`c` - when "true" removing boolean keys with "false" value from the right jsonb
 
 It also provides an aggregation function `jsonb_deep_agg`
 
@@ -92,7 +94,7 @@ JSONB is internall represented as a tree in which all levels are sorted.
   
 ## LIMITATIONS
 
-Right now, the algorithm supports the removal of empty keys, from merged JSONB only at first level of nesting.
+Right now, the algorithm supports the removal of empty keys, from merged JSONB only at first level of nesting and does not support arrays.
 
 Examples
 
