@@ -1,0 +1,27 @@
+{
+  "abstract": "Merge jsonbs recursively",
+  "maintainer": "pavel-xa",
+  "license": "mit",
+  "provides": {
+      "jsonb_deep_merge": {
+        "file": "jsonb_deep_merge--0.0.2.sql",
+        "version": "0.0.2"
+      }
+  },
+  "meta-spec": {
+    "version": "1.0.0",
+    "url": "http://pgxn.org/meta/spec.txt"
+  },
+  "name": "jsonb_deep_merge",
+  "version": "0.0.2",
+  "description": "jsonb_deep_merge offers functions to merge jsonb recursively",
+  "resources": {
+    "repository": {
+      "url": "https://github.com/pavel-xa/jsonb_deep_merge",
+      "type": "git"
+    }
+  },
+  "tags": [
+    "jsonb"
+  ]
+}
