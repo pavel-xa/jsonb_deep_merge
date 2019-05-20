@@ -105,8 +105,7 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 			continue;
 		}
 
-		Assert(tok1 == WJB_KEY);
-		Assert(tok2 == WJB_KEY);
+		Assert(tok1 == WJB_KEY && tok2 == WJB_KEY);
 
 		difference = lengthCompareJsonbStringValue(&v1, &v2);
 		/* first key is smaller */
@@ -129,17 +128,17 @@ jsonb_deep_merge(PG_FUNCTION_ARGS)
 		tok1 = JsonbNextToken(&it1, &v1, false);
 		tok2 = JsonbNextToken(&it2, &v2, false);
 
-		if ((&v1)->type != jbvObject || (&v2)->type != jbvObject)
+		if (v1.type != jbvObject || v2.type != jbvObject)
 		{
 			group_start = pushJsonbKeyRecursive(&state, &g, &k, tok2, &v2, &it2, &lvl, group_start, strip_false);
 
-			if ((&v1)->type == jbvObject)
+			if (v1.type == jbvObject)
 				while (tok1 != WJB_END_OBJECT)
 				{
 					tok1 = JsonbNextToken(&it1, &v1, true);
 				}
 		}
-		else if ((&v1)->type == jbvObject && (&v2)->type == jbvObject)
+		else if (v1.type == jbvObject && v2.type == jbvObject)
 		{
 			if (lvl == 0)
 				group_start = false;
@@ -269,11 +268,11 @@ pushJsonbKeyRecursive(JsonbParseState** pstate, JsonbValue* gkey, JsonbValue* ke
 	else
 		tok = JsonbNextToken(it, &v, false);
 
-	if ((&v)->type != jbvObject)
+	if (v.type != jbvObject)
 	{
 		group_start = pushJsonbKey(pstate, gkey, key, tok, &v, lvl, group_start, strip_false);
 	}
-	else if ((int)(&v)->val.object.nPairs > 0) /* val->type = jbvObject */
+	else if (v.val.object.nPairs > 0) /* val.type = jbvObject */
 	{
 		if (*lvl == 0)
 			group_start = false;
